@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.env
+*.html
+*.json
+scratch/
+test_security_reproduction.py

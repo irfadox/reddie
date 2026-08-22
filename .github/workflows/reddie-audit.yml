@@ -1,0 +1,29 @@
+name: 🛡️ Reddie LLM Security Audit & Auto-Patch
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run nightly security scan
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Reddie Security Audit
+        uses: ./
+        with:
+          repo-path: '.'
+          endpoint-url: 'mock://local'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          export-html: 'reddie-report.html'
+          export-json: 'reddie-report.json'

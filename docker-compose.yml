@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  reddie-scanner:
+    build: .
+    volumes:
+      - ./:/workspace
+    working_dir: /workspace
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
+    command: ["--repo-path", "/workspace/examples/vulnerable_app", "--export-html", "/workspace/report.html", "--export-json", "/workspace/report.json", "--dry-run"]
