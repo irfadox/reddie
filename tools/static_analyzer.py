@@ -93,7 +93,7 @@ class StaticAnalyzer:
                             key = f"{rel_path}:{name}"
                             prompts[key] = val.strip()
 
-            # Check LangChain SystemMessage, PromptTemplate, ChatPromptTemplate instantiations
+            # Check LangChain, CrewAI, LlamaIndex, OpenAI/Anthropic instantiations
             elif isinstance(node, ast.Call):
                 func_name = self._get_call_func_name(node)
                 if func_name in ("SystemMessage", "SystemMessagePromptTemplate", "PromptTemplate", "ChatPromptTemplate"):
@@ -108,6 +108,25 @@ class StaticAnalyzer:
                             if val and len(val.strip()) > 10:
                                 key = f"{rel_path}:{func_name}_{kw.arg}_{node.lineno}"
                                 prompts[key] = val.strip()
+
+                # Check CrewAI Agent(role=..., goal=..., backstory=...)
+                elif func_name in ("Agent", "CrewAgent", "WorkerAgent"):
+                    crew_parts = []
+                    for kw in node.keywords:
+                        if kw.arg in ("role", "goal", "backstory"):
+                            val = self._extract_ast_string_value(kw.value)
+                            if val:
+                                crew_parts.append(f"{kw.arg.capitalize()}: {val}")
+                    if crew_parts:
+                        prompts[f"{rel_path}:CrewAI_Agent_{node.lineno}"] = "\n".join(crew_parts)
+
+                # Check general system_prompt / system kwargs in LLM calls
+                else:
+                    for kw in node.keywords:
+                        if kw.arg in ("system_prompt", "system", "instructions", "prompt_template"):
+                            val = self._extract_ast_string_value(kw.value)
+                            if val and len(val.strip()) > 10:
+                                prompts[f"{rel_path}:{kw.arg}_{node.lineno}"] = val.strip()
 
             # Check Function definitions for @tool decorator
             elif isinstance(node, ast.FunctionDef):

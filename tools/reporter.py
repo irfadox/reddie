@@ -418,6 +418,78 @@ class SecurityReporter:
             Path(output_path).write_text(html_content, encoding="utf-8")
         return html_content
 
+    def to_sarif(self, output_path: Optional[str] = None) -> str:
+        """Generates a standard OASIS SARIF v2.1.0 report for GitHub Security / Code Scanning integration."""
+        rules = []
+        rule_ids_seen = set()
+
+        for cat_key, mapping in OWASP_LLM_MAPPING.items():
+            rule_id = mapping["id"].replace(":", "-")
+            if rule_id not in rule_ids_seen:
+                rule_ids_seen.add(rule_id)
+                rules.append({
+                    "id": rule_id,
+                    "name": mapping["name"].replace(" ", ""),
+                    "shortDescription": {"text": mapping["name"]},
+                    "fullDescription": {"text": mapping["description"]},
+                    "defaultConfiguration": {"level": "error"},
+                    "properties": {
+                        "tags": ["security", "llm-security", "owasp-top-10"],
+                        "precision": "high",
+                    },
+                })
+
+        results = []
+        for exp in self.exploits:
+            cat = exp.get("category", "prompt_injection")
+            mapping = OWASP_LLM_MAPPING.get(cat, {"id": "LLM01:2025", "name": "Prompt Injection", "description": "LLM Vulnerability"})
+            rule_id = mapping["id"].replace(":", "-")
+
+            results.append({
+                "ruleId": rule_id,
+                "level": "error",
+                "message": {
+                    "text": f"[{exp.get('id', 'VULN')}] {exp.get('vulnerability_reason', 'Vulnerability detected by Reddie')}",
+                },
+                "locations": [
+                    {
+                        "physicalLocation": {
+                            "artifactLocation": {
+                                "uri": exp.get("file_path", "system_prompt"),
+                                "uriBaseId": "%SRCROOT%",
+                            },
+                            "region": {
+                                "startLine": 1,
+                                "startColumn": 1,
+                            },
+                        },
+                    }
+                ],
+            })
+
+        sarif_data = {
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+                {
+                    "tool": {
+                        "driver": {
+                            "name": "Reddie",
+                            "version": "0.1.0",
+                            "informationUri": "https://github.com/irfadox/reddie",
+                            "rules": rules,
+                        }
+                    },
+                    "results": results,
+                }
+            ],
+        }
+
+        sarif_str = json.dumps(sarif_data, indent=2)
+        if output_path:
+            Path(output_path).write_text(sarif_str, encoding="utf-8")
+        return sarif_str
+
     def _generate_owasp_compliance(self) -> List[Dict[str, Any]]:
         categories_found = {exp.get("category", "") for exp in self.exploits}
         compliance = []

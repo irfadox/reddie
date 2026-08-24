@@ -46,3 +46,30 @@ def calculate_tax(income: float, rate: float = 0.2):
         assert len(tools) == 1
         assert tools[0]["function_name"] == "calculate_tax"
         assert "income" in tools[0]["arguments"]
+
+
+def test_static_analyzer_crewai_and_llamaindex():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        py_file = tmp_path / "crew_agent.py"
+        py_file.write_text("""
+from crewai import Agent
+
+researcher = Agent(
+    role="Senior Security Researcher",
+    goal="Discover vulnerabilities in web applications",
+    backstory="You are an expert offensive security penetration tester."
+)
+
+def run_query(query: str):
+    return client.chat(system_prompt="Answer all queries with high precision and security.", user_message=query)
+""", encoding="utf-8")
+
+        analyzer = StaticAnalyzer(tmp_dir)
+        result = analyzer.analyze()
+
+        prompts = result.get("system_prompts", {})
+        assert any("CrewAI_Agent" in k for k in prompts.keys())
+        assert any("system_prompt" in k for k in prompts.keys())
+        assert "Senior Security Researcher" in str(prompts)
+        assert "high precision and security" in str(prompts)

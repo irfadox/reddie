@@ -18,6 +18,10 @@ inputs:
     description: 'GitHub token for branch creation and opening PRs.'
     required: false
     default: ${{ github.token }}
+  groq-key:
+    description: 'Groq API key for dynamic AI red-teaming.'
+    required: false
+    default: ''
   export-html:
     description: 'Path to export interactive HTML security audit report.'
     required: false
@@ -26,6 +30,10 @@ inputs:
     description: 'Path to export JSON audit report.'
     required: false
     default: 'reddie-report.json'
+  export-sarif:
+    description: 'Path to export OASIS SARIF v2.1.0 report for GitHub Security integration.'
+    required: false
+    default: 'reddie-report.sarif'
   dry-run:
     description: 'Run audit and verification without creating remote PRs.'
     required: false
@@ -43,29 +51,37 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install git+https://github.com/reddie-ai/reddie.git || pip install -r ${{ github.action_path }}/requirements.txt
+        pip install git+https://github.com/irfadox/reddie.git || pip install -e ${{ github.action_path }}
 
     - name: Run Reddie Security Audit & Auto-Patch
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        GROQ_API_KEY: ${{ inputs.groq-key }}
       run: |
         DRY_RUN_FLAG=""
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           DRY_RUN_FLAG="--dry-run"
         fi
         
-        python3 -m main \
+        GROQ_FLAG=""
+        if [ -n "${{ inputs.groq-key }}" ]; then
+          GROQ_FLAG="--groq-key ${{ inputs.groq-key }}"
+        fi
+
+        reddie \
           --repo-path "${{ inputs.repo-path }}" \
           --endpoint-url "${{ inputs.endpoint-url }}" \
           --github-repo "${{ github.repository }}" \
           --github-token "${{ inputs.github-token }}" \
           --export-html "${{ inputs.export-html }}" \
           --export-json "${{ inputs.export-json }}" \
+          --export-sarif "${{ inputs.export-sarif }}" \
+          $GROQ_FLAG \
           $DRY_RUN_FLAG
 
-    - name: Upload Security Audit Report
+    - name: Upload Security Audit Report Artifacts
       uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -73,3 +89,4 @@ runs:
         path: |
           ${{ inputs.export-html }}
           ${{ inputs.export-json }}
+          ${{ inputs.export-sarif }}

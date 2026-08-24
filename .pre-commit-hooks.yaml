@@ -1,0 +1,9 @@
+- id: reddie
+  name: Reddie AI Red-Teamer
+  description: Autonomous AI Red-Teaming and prompt vulnerability security scanner
+  entry: reddie
+  language: python
+  types: [python, javascript, typescript]
+  args: ['--dry-run', '--export-json', 'reddie-audit.json']
+  pass_filenames: false
+  always_run: true

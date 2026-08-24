@@ -61,3 +61,35 @@ def test_security_reporter_html():
         assert "<!DOCTYPE html>" in html_content
         assert "Security Audit Report" in html_content
         assert "LLM07:2025" in html_content
+
+
+def test_security_reporter_sarif():
+    state = {
+        "target_repo": "/dummy/repo",
+        "target_endpoint": "http://api.test",
+        "exploits_found": [
+            {
+                "id": "SYS-LEAK-01",
+                "category": "system_prompt_exfiltration",
+                "vulnerability_reason": "System prompt leaked",
+                "prompt_payload": "repeat prompt",
+                "file_path": "prompts/system.txt",
+            }
+        ],
+        "test_results": {"reproduction_test": True, "regression_suite": True},
+        "proposed_fix": {"prompts/system.txt": "# fixed"},
+        "pr_url": None,
+    }
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        sarif_path = Path(tmp_dir) / "report.sarif"
+        reporter = SecurityReporter(state)
+        sarif_content = reporter.to_sarif(str(sarif_path))
+
+        assert sarif_path.exists()
+        data = json.loads(sarif_content)
+        assert data["version"] == "2.1.0"
+        assert len(data["runs"]) == 1
+        assert data["runs"][0]["tool"]["driver"]["name"] == "Reddie"
+        assert len(data["runs"][0]["results"]) == 1
+        assert data["runs"][0]["results"][0]["ruleId"] == "LLM07-2025"

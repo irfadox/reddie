@@ -100,6 +100,12 @@ def parse_args():
         help="File path to save the machine-readable JSON security report.",
     )
     parser.add_argument(
+        "--export-sarif",
+        type=str,
+        default=None,
+        help="File path to save the OASIS SARIF v2.1.0 report for GitHub Security integration.",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose debug logging.",
@@ -309,6 +315,9 @@ def main():
     if args.export_json:
         reporter.to_json(args.export_json)
         console.print(f"[bold white]📊 JSON Audit Report saved:[/bold white] [underline cyan]{args.export_json}[/underline cyan]")
+    if args.export_sarif:
+        reporter.to_sarif(args.export_sarif)
+        console.print(f"[bold white]🛡️ SARIF Audit Report saved:[/bold white] [underline cyan]{args.export_sarif}[/underline cyan]")
 
 
 if __name__ == "__main__":
